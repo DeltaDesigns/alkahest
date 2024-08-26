@@ -317,6 +317,12 @@ pub struct GlobalPipelines {
     pub debug_cubemap_diffuse_probes: Box<Technique>,
     pub debug_cubemap_overdraw: Box<Technique>,
     pub debug_cubemap_specular_opacity: Box<Technique>,
+
+    //Uber
+    pub deferred_uber_light: Box<Technique>,
+    pub deferred_uber_line_light: Box<Technique>,
+    pub deferred_uber_light_gel_spot: Box<Technique>,
+    pub deferred_uber_light_shadowing: Box<Technique>,
 }
 
 #[derive(PartialEq)]

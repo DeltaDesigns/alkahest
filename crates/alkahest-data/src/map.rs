@@ -374,9 +374,20 @@ pub struct SLight {
     pub technique_shading: TagHash,
     pub technique_volumetrics: TagHash,
     pub technique_compute_lightprobe: TagHash,
-    pub unkd0: TagHash, // Unk80806da1
-    pub unkd4: TagHash, // Unk80806da1
+    pub unkd0: Tag<SUberLightData>, // Unk80806da1
+    pub unkd4: Tag<SUberLightData>, // Unk80806da1
     pub unkd8: [u32; 6],
+}
+
+#[derive(Clone, Debug)]
+#[tiger_tag(id = 0x80806DA1)]
+pub struct SUberLightData {
+    pub file_size: u64,
+    pub unk08: [u32; 10],
+    pub bytecode: Vec<u8>,
+    pub bytecode_constants: Vec<Vec4>,
+    pub unk50: [u32; 4],
+    pub unk60: Vec<Vec4>,
 }
 
 #[derive(Clone, Debug)]

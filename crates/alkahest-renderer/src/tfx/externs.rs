@@ -68,6 +68,7 @@ pub struct ExternStorage {
     pub view: Option<View>,
     pub deferred: Option<Deferred>,
     pub deferred_light: Option<DeferredLight>,
+    pub deferred_uber_light: Option<DeferredUberLight>,
     pub deferred_shadow: Option<DeferredShadow>,
     pub transparent: Option<Transparent>,
     pub rigid_model: Option<RigidModel>,
@@ -97,6 +98,7 @@ impl Default for ExternStorage {
             deferred: None,
             deferred_light: None,
             deferred_shadow: None,
+            deferred_uber_light: None,
             transparent: None,
             rigid_model: None,
             decal: None,
@@ -238,6 +240,7 @@ impl ExternStorage {
             View => self.view,
             Deferred => self.deferred,
             DeferredLight => self.deferred_light,
+            DeferredUberLight => self.deferred_uber_light,
             DeferredShadow => self.deferred_shadow,
             Transparent => self.transparent,
             RigidModel => self.rigid_model,
@@ -276,6 +279,7 @@ impl ExternStorage {
             View,
             Deferred,
             DeferredLight,
+            DeferredUberLight,
             DeferredShadow,
             Transparent,
             RigidModel,
@@ -312,6 +316,7 @@ impl ExternStorage {
             View => self.view,
             Deferred => self.deferred,
             DeferredLight => self.deferred_light,
+            DeferredUberLight => self.deferred_uber_light,
             DeferredShadow => self.deferred_shadow,
             Transparent => self.transparent,
             RigidModel => self.rigid_model,
@@ -562,6 +567,26 @@ extern_struct! {
         0x118 => unk118: f32 > unimplemented(true),
         0x11c => unk11c: f32 > unimplemented(true),
         0x120 => unk120: f32 > unimplemented(true),
+    }
+}
+
+extern_struct! {
+    struct DeferredUberLight("deferred_uber_light") {
+        0x00 => unk00: Vec4 > unimplemented(false) > default(Vec4::new(1.0,2.0,0.0,1.0)),
+        0x10 => unk10: Vec4,
+        0x20 => unk20: Vec4 ,
+        0x30 => unk30: Vec4 ,
+        0x40 => unk40: Vec4,
+        0x50 => unk50: Vec4,
+        0x60 => unk60: f32 > unimplemented(true),
+        0x64 => unk64: f32 > unimplemented(true),
+        0x68 => unk68: f32 > unimplemented(true),
+        0x6c => unk6c: f32 > unimplemented(true),
+        0x70 => unk70: f32 > unimplemented(true),
+        0x74 => unk74: f32 > unimplemented(true),
+        0x78 => unk78: f32 > unimplemented(true),
+        0x7c => unk7c: f32 > unimplemented(true),
+        0x80 => unk80: f32 > unimplemented(true), // u32
     }
 }
 

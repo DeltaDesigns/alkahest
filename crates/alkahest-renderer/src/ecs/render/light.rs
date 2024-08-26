@@ -23,17 +23,14 @@ use windows::Win32::Graphics::{
 use crate::{
     camera::{CameraProjection, Viewport},
     ecs::{common::Hidden, transform::Transform, Scene},
-    gpu::{GpuContext, SharedGpuContext},
+    gpu::{buffer::ConstantBufferCached, GpuContext, SharedGpuContext},
     gpu_event,
     handle::Handle,
     icons::{ICON_LIGHTBULB_FLUORESCENT_TUBE, ICON_LIGHTBULB_ON, ICON_SPOTLIGHT_BEAM},
     loaders::AssetManager,
     renderer::{gbuffer::ShadowDepthMap, Renderer},
     tfx::{
-        externs,
-        externs::TextureView,
-        technique::Technique,
-        view::{RenderStageSubscriptions, View},
+        bytecode::{interpreter::TfxBytecodeInterpreter, opcodes::TfxBytecodeOp}, externs::{self, TextureView}, technique::Technique, view::{RenderStageSubscriptions, View}
     },
 };
 
@@ -57,6 +54,9 @@ pub struct LightRenderer {
 
     pub debug_label: String,
     pub debug_info: String,
+
+    pub uber_cbuffer: Option<ConstantBufferCached<Vec4>>,
+    pub uber_bytecode: Option<TfxBytecodeInterpreter>,
 }
 
 impl LightRenderer {
@@ -156,23 +156,65 @@ impl LightRenderer {
             technique_compute_lightprobe_shadowing: None,
             debug_label: "Unknown DeferredLight".to_string(),
             debug_info: "Unknown DeferredLight".to_string(),
+
+            uber_cbuffer: None,
+            uber_bytecode: None
         })
     }
 
     pub fn load(
+        renderer: &Renderer,
         gctx: SharedGpuContext,
         asset_manager: &mut AssetManager,
         light: &SLight,
+        shape: LightShape,
         debug_label: String,
     ) -> anyhow::Result<Self> {
         Ok(Self {
             projection_matrix: light.light_to_world,
-            technique_shading: asset_manager.get_or_load_technique(light.technique_shading),
+            technique_shading: 
+            if shape == LightShape::Spot 
+            {
+                asset_manager.get_or_load_technique(renderer.render_globals.pipelines.deferred_uber_light_gel_spot.hash)//(light.technique_shading),
+            } 
+            else if shape == LightShape::Line 
+            {
+                asset_manager.get_or_load_technique(renderer.render_globals.pipelines.deferred_uber_line_light.hash)//(light.technique_shading),
+            }
+            else
+            {
+                asset_manager.get_or_load_technique(renderer.render_globals.pipelines.deferred_uber_light.hash)//(light.technique_shading),
+            },
+            
+            
             technique_volumetrics: asset_manager.get_or_load_technique(light.technique_volumetrics),
             technique_compute_lightprobe: asset_manager
                 .get_or_load_technique(light.technique_compute_lightprobe),
             debug_label,
             debug_info: format!("{light:X?}"),
+
+            uber_cbuffer: if !light.unkd0.unk60.is_empty() {
+                let data = bytemuck::cast_slice(&light.unkd0.unk60);
+                let buf = ConstantBufferCached::create_array_init(gctx.clone(), data).unwrap();
+                Some(buf)
+            } else {
+                None
+            },
+
+            uber_bytecode: if !light.unkd0.unk60.is_empty() {
+                match TfxBytecodeOp::parse_all(&light.unkd0.bytecode, binrw::Endian::Little) {
+                    Ok(opcodes) => Some(TfxBytecodeInterpreter::new(opcodes)),
+                    Err(e) => {
+                        debug!(
+                            "Failed to parse UberLight TFX bytecode: {e:?} (data={})",
+                            hex::encode(&light.unkd0.bytecode)
+                        );
+                        None
+                    }
+                }
+            } else {
+                None
+            },
             ..Self::new_empty(gctx.clone())?
         })
     }
@@ -291,6 +333,48 @@ pub fn draw_light_system(renderer: &Renderer, scene: &Scene) {
 
                 ..existing_deflight
             });
+            
+            if !light.unkd0.unk60.is_empty()
+            {
+                if let Some(bytecode) = &light_renderer.uber_bytecode {
+                    let _ = bytecode.evaluate(
+                        &renderer.gpu,
+                        &externs,
+                        light_renderer.uber_cbuffer.as_ref(),
+                        &light.unkd0.bytecode_constants,
+                        &[None],
+                    );
+                }
+                let cbuffer = light_renderer.uber_cbuffer.as_ref().clone().unwrap().data_array();
+
+                let existing_def_uberlight = externs.deferred_uber_light.as_ref().cloned().unwrap_or_default();
+                
+                // for b in 0..cbuffer.len()
+                // {
+                //     println!("{}", cbuffer[b]);
+                // }
+                // println!("\n");
+                
+                // idfk
+                externs.deferred_uber_light = Some(externs::DeferredUberLight {
+                    unk00: cbuffer[1],
+                    unk10: cbuffer[2].with_w(0.5),
+                    unk20: cbuffer[3].with_w(0.5),
+                    unk30: cbuffer[4].with_w(0.5),
+                    unk40: cbuffer[5].with_w(0.5),
+                    // unk50: light.unk50,
+                    // unk60: light.unka0,
+                    // unk64: light.unka4,
+                    // unk68: light.unka8,
+                    // unk6c: light.unkac,
+                    // unk70: light.unkb0,
+                    // unk74: light.unkb4,
+                    // unk78: light.unkb8,
+                    // unk7c: light.unkbc,
+                    ..existing_def_uberlight
+                });
+            }
+            
         }
 
         light_renderer.draw(renderer, false);
@@ -446,6 +530,7 @@ impl View for ShadowMapRenderer {
     }
 }
 
+#[derive(PartialEq)]
 pub enum LightShape {
     Omni,
     Spot,

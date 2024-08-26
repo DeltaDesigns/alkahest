@@ -153,6 +153,7 @@ impl GuiView for TfxExternEditor {
             // TfxExtern::WaterDisplacement,
             // TfxExtern::PatternBlending,
             TfxExtern::DeferredLight,
+            TfxExtern::DeferredUberLight,
             TfxExtern::DeferredShadow,
             TfxExtern::SpeedtreePlacements,
             TfxExtern::DecoratorWind,

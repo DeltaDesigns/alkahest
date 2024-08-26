@@ -658,9 +658,11 @@ fn load_datatable_into_scene<R: Read + Seek>(
                                 ..Default::default()
                             },
                             LightRenderer::load(
+                                renderer,
                                 renderer.gpu.clone(),
                                 &mut renderer.data.lock().asset_manager,
                                 &light,
+                                shape,
                                 format!("light {tag}+{i}"),
                             )
                             .context("Failed to load light")?,
